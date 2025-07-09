@@ -1,0 +1,1 @@
+Perform reconnaissance on the target server at 172.21.0.4. The goal is to identify all open ports, running services, and potential web applications.

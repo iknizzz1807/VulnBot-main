@@ -1,0 +1,97 @@
+version: "3.8"
+
+services:
+  kali:
+    image: kalilinux/kali-rolling
+    container_name: kali-for-vulnbot
+    command: >
+      /bin/bash -c "
+      apt-get update && 
+      apt-get install -y openssh-server procps nmap net-tools curl wget && 
+      echo 'root:root' | chpasswd && 
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && 
+      service ssh start && 
+      tail -f /dev/null
+      "
+    ports:
+      - "2222:22"
+    networks:
+      - vulnbot-net
+
+  # 2. MySQL Container for storing session, plan, and task data
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-for-vulnbot
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: vulnbot_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - vulnbot-net
+
+  # 3. ETCD Container - Coordination service for Milvus
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_INITIAL_CLUSTER_STATE=new
+    volumes:
+      - milvus-etcd:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    networks:
+      - vulnbot-net
+
+  # 4. MinIO Container - Storage service for Milvus
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - milvus-minio:/minio_data
+    command: minio server /minio_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - vulnbot-net
+
+  # 5. Milvus Container - The vector database itself
+  milvus:
+    container_name: milvus-for-vulnbot
+    image: milvusdb/milvus:v2.2.11 # Using a stable, well-tested version
+    command: ["/tini", "--", "/milvus/bin/milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - milvus-data:/var/lib/milvus
+    ports:
+      - "19530:19530" # gRPC port
+      - "9091:9091" # HTTP port
+    depends_on:
+      - "etcd"
+      - "minio"
+    networks:
+      - vulnbot-net
+
+# Define the network for all services to communicate
+networks:
+  vulnbot-net:
+    driver: bridge
+
+# Define the persistent volumes
+volumes:
+  mysql-data:
+  milvus-etcd:
+  milvus-minio:
+  milvus-data:
