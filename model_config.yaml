@@ -1,0 +1,13 @@
+api_key:
+llm_model: gemini
+base_url: ""
+llm_model_name: gemini-2.5-pro
+embedding_models: maidalun1020/bce-embedding-base_v1
+embedding_type: local
+context_length: 120000
+embedding_url: ""
+rerank_model: maidalun1020/bce-reranker-base_v1
+temperature: 0.5
+history_len: 5
+timeout: 600
+proxies: {}

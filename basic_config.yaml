@@ -1,0 +1,19 @@
+log_verbose: true
+enable_rag: false
+mode: auto
+KB_ROOT_PATH: D:\CurrentAssignment\pen_test_intern\VulnBot-main\data\knowledge_base
+http_default_timeout: 300
+kali:
+  hostname: 127.0.0.1
+  port: 2222
+  username: root
+  password: root
+default_bind_host: 127.0.0.1
+api_server:
+  host: 127.0.0.1
+  port: 7861
+  public_host: 127.0.0.1
+  public_port: 7861
+webui_server:
+  host: 127.0.0.1
+  port: 8501
